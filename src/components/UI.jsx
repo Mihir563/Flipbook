@@ -1,146 +1,258 @@
 import { atom, useAtom } from "jotai";
-import { useEffect } from "react";
-
-const pictures = [
-  "DSC00680",
-  "DSC00933",
-  "DSC00966",
-  "DSC00983",
-  "DSC01011",
-  "DSC01040",
-  "DSC01064",
-  "DSC01071",
-  "DSC01103",
-  "DSC01145",
-  "DSC01420",
-  "DSC01461",
-  "DSC01489",
-  "DSC02031",
-  "DSC02064",
-  "DSC02069",
-];
+import { useEffect, useRef, useState } from "react";
+import axios from "axios";
+import AudioPlayer from "./AudioPlayer";
 
 export const pageAtom = atom(0);
-export const pages = [
-  {
-    front: "book-cover",
-    back: pictures[0],
-  },
-];
-for (let i = 1; i < pictures.length - 1; i += 2) {
-  pages.push({
-    front: pictures[i % pictures.length],
-    back: pictures[(i + 1) % pictures.length],
-  });
-}
+// Add a new atom to track the display mode
+export const splitImageModeAtom = atom(false);
+// Add a loading state atom
+export const loadingAtom = atom(true);
+// Add an error state atom
+export const errorAtom = atom(null);
 
-pages.push({
-  front: pictures[pictures.length - 1],
-  back: "book-back",
-});
+// Create pages from the image URLs in the data
+export const createPagesFromData = (data, splitImageMode = false) => {
+  const imageUrls = [];
 
-export const UI = () => {
+  // Extract all image URLs from the data
+  if (data && data.ImagesServer) {
+    for (const key in data.ImagesServer) {
+      if (data.ImagesServer.hasOwnProperty(key)) {
+        imageUrls.push(data.ImagesServer[key]);
+      }
+    }
+  }
+
+  // Need at least one image for the book
+  if (imageUrls.length === 0) {
+    imageUrls.push("https://via.placeholder.com/800x600?text=No+Images");
+  }
+
+  // Create pages array with front and back references
+  const bookPages = [];
+
+  if (splitImageMode) {
+    // First page (cover) - should NOT be split
+    bookPages.push({
+      front: imageUrls[0],
+      back: imageUrls.length > 1 ? imageUrls[1] : imageUrls[0],
+      isSplitImage: false,
+      isCover: true,
+    });
+
+    // Middle pages: Split images - start from index 1 to include all pages
+    for (let i = 1; i < imageUrls.length - 1; i++) {
+      bookPages.push({
+        front: imageUrls[i],
+        back: imageUrls[i],
+        isSplitImage: true,
+        frontIndex: 0,
+        backIndex: 1,
+      });
+    }
+
+    // Last page (back cover) - should NOT be split
+    if (imageUrls.length > 1) {
+      bookPages.push({
+        front: imageUrls[imageUrls.length - 1],
+        back: imageUrls[imageUrls.length - 1],
+        isSplitImage: false,
+        isCover: true,
+      });
+    }
+  } else {
+    // Original mode: different images on front and back
+    // First page (cover)
+    bookPages.push({
+      front: imageUrls[0],
+      back: imageUrls.length > 1 ? imageUrls[1] : imageUrls[0],
+      isSplitImage: false,
+      isCover: true,
+    });
+
+    // Middle pages
+    for (let i = 2; i < imageUrls.length - 1; i += 2) {
+      bookPages.push({
+        front: imageUrls[i],
+        back: i + 1 < imageUrls.length ? imageUrls[i + 1] : imageUrls[i],
+        isSplitImage: false,
+      });
+    }
+
+    // Only add back cover if we have enough images
+    if (imageUrls.length > 2) {
+      // Last page (back cover)
+      bookPages.push({
+        front: imageUrls[imageUrls.length - 1],
+        back: imageUrls[0], // Use first image as back cover or could use a specific back cover image
+        isSplitImage: false,
+        isCover: true,
+      });
+    }
+  }
+  return bookPages;
+};
+
+// Export pages array that will be updated when data is fetched
+export let pages = [];
+
+// Initialize pages with project data
+export const initializePages = (data, splitMode = true) => {
+  pages = createPagesFromData(data, splitMode);
+  return pages;
+};
+
+// Create a data atom to store the fetched project data
+export const projectDataAtom = atom(null);
+
+export const UI = ({ albumId }) => {
   const [page, setPage] = useAtom(pageAtom);
+  const [splitImageMode, setSplitImageMode] = useAtom(splitImageModeAtom);
+  const [projectData, setProjectData] = useAtom(projectDataAtom);
+  const [loading, setLoading] = useAtom(loadingAtom);
+  const [error, setError] = useAtom(errorAtom);
+  const [title, setTitle] = useState("Photo Album");
+  const [isMobile, setIsMobile] = useState(false);
+  const [audioUrl, setAudioUrl] = useState("");
 
+  // Check window size for responsive layout
   useEffect(() => {
-    const audio = new Audio("/audios/page-flip-01a.mp3");
-    audio.play();
-  }, [page]);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // Initial check
+    checkMobile();
+
+    // Add event listener with debounce
+    let resizeTimer;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(checkMobile, 100);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  // Fetch data when component mounts or albumId changes
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!albumId || albumId.trim() === "") return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Use the provided API endpoint with the albumId
+        const response = await axios.get(
+          `https://studio.codnix.com/creation/ealbum/${albumId}.json`
+        );
+        setProjectData(response.data);
+
+        // Determine split image mode based on SingleSided property
+        // If SingleSided is true, we want full image mode (splitImageMode = false)
+        // If SingleSided is not specified or false, we want split image mode (splitImageMode = true)
+        const shouldUseSplitMode =
+          response.data.SingleSided === undefined ||
+          response.data.SingleSided === false;
+        setSplitImageMode(shouldUseSplitMode);
+
+        // Initialize pages with the fetched data
+        // Now using the automatically determined split mode
+        initializePages(response.data, shouldUseSplitMode);
+
+        // Set the title from project data if available
+        if (response.data && response.data.ProjectTitle) {
+          setTitle(response.data.ProjectTitle);
+        }
+        if (response.data && response.data.MusicServer) {
+          setAudioUrl(response.data.MusicServer);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching project data:", err);
+        setError("Failed to load album data. Please try again later.");
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [albumId, setProjectData, setLoading, setError, setSplitImageMode]);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-30">
+        <div className="text-white text-base sm:text-xl flex flex-col items-center">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-blue-500 border-blue-200/30 rounded-full animate-spin mb-3"></div>
+          <span>Loading album...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-30 p-4">
+        <div className="text-white text-sm sm:text-base md:text-xl bg-red-500/50 p-3 sm:p-4 rounded-lg max-w-md text-center">
+          <div className="text-2xl sm:text-3xl mb-2">⚠️</div>
+          {error}
+          <button
+            className="mt-3 bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-md text-sm sm:text-base block mx-auto"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
-      <main className=" pointer-events-none select-none z-10 fixed  inset-0  flex justify-between flex-col">
-        <a
-          className="pointer-events-auto mt-10 ml-10"
-          href="https://lessons.wawasensei.dev/courses/react-three-fiber"
+      <main className="pointer-events-none select-none z-10 fixed inset-0 flex justify-between flex-col">
+        <div
+          className={`w-full ${isMobile ? "p-2" : "p-4"} flex ${
+            isMobile ? "flex-col gap-2" : "justify-between items-center"
+          }`}
         >
-          <img className="w-20" src="/images/wawasensei-white.png" />
-        </a>
-        <div className="w-full overflow-auto pointer-events-auto flex justify-center">
-          <div className="overflow-auto flex items-center gap-4 max-w-full p-10">
-            {[...pages].map((_, index) => (
-              <button
-                key={index}
-                className={`border-transparent hover:border-white transition-all duration-300  px-4 py-3 rounded-full  text-lg uppercase shrink-0 border ${
-                  index === page
-                    ? "bg-white/90 text-black"
-                    : "bg-black/30 text-white"
-                }`}
-                onClick={() => setPage(index)}
-              >
-                {index === 0 ? "Cover" : `Page ${index}`}
-              </button>
-            ))}
+          <h1
+            className={`bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent 
+    font-bold px-3 py-1 sm:px-4 sm:py-2 rounded-lg truncate max-w-full 
+    ${isMobile ? "text-lg w-full text-center" : "text-xl md:text-2xl"}`}
+          >
+            {title}
+          </h1>
+
+          <div>{audioUrl && <AudioPlayer audioUrl={audioUrl} />}</div>
+        </div>
+
+        {/* Add page navigation controls for mobile at the bottom */}
+        {isMobile && (
+          <div className="w-full p-2 flex justify-center gap-4 mb-2">
             <button
-              className={`border-transparent hover:border-white transition-all duration-300  px-4 py-3 rounded-full  text-lg uppercase shrink-0 border ${
-                page === pages.length
-                  ? "bg-white/90 text-black"
-                  : "bg-black/30 text-white"
-              }`}
-              onClick={() => setPage(pages.length)}
+              className="pointer-events-auto text-white bg-black/40 hover:bg-black/60 px-6 py-2 rounded-lg text-sm"
+              onClick={() => page > 0 && setPage(page - 1)}
+              disabled={page === 0}
             >
-              Back Cover
+              ← Prev
+            </button>
+            <button
+              className="pointer-events-auto text-white bg-black/40 hover:bg-black/60 px-6 py-2 rounded-lg text-sm"
+              onClick={() => page < pages.length - 1 && setPage(page + 1)}
+              disabled={page === pages.length - 1}
+            >
+              Next →
             </button>
           </div>
-        </div>
+        )}
       </main>
-
-      <div className="fixed inset-0 flex items-center -rotate-2 select-none">
-        <div className="relative">
-          <div className="bg-white/0  animate-horizontal-scroll flex items-center gap-8 w-max px-8">
-            <h1 className="shrink-0 text-white text-10xl font-black ">
-              Wawa Sensei
-            </h1>
-            <h2 className="shrink-0 text-white text-8xl italic font-light">
-              React Three Fiber
-            </h2>
-            <h2 className="shrink-0 text-white text-12xl font-bold">
-              Three.js
-            </h2>
-            <h2 className="shrink-0 text-transparent text-12xl font-bold italic outline-text">
-              Ultimate Guide
-            </h2>
-            <h2 className="shrink-0 text-white text-9xl font-medium">
-              Tutorials
-            </h2>
-            <h2 className="shrink-0 text-white text-9xl font-extralight italic">
-              Learn
-            </h2>
-            <h2 className="shrink-0 text-white text-13xl font-bold">
-              Practice
-            </h2>
-            <h2 className="shrink-0 text-transparent text-13xl font-bold outline-text italic">
-              Creative
-            </h2>
-          </div>
-          <div className="absolute top-0 left-0 bg-white/0 animate-horizontal-scroll-2 flex items-center gap-8 px-8 w-max">
-            <h1 className="shrink-0 text-white text-10xl font-black ">
-              Wawa Sensei
-            </h1>
-            <h2 className="shrink-0 text-white text-8xl italic font-light">
-              React Three Fiber
-            </h2>
-            <h2 className="shrink-0 text-white text-12xl font-bold">
-              Three.js
-            </h2>
-            <h2 className="shrink-0 text-transparent text-12xl font-bold italic outline-text">
-              Ultimate Guide
-            </h2>
-            <h2 className="shrink-0 text-white text-9xl font-medium">
-              Tutorials
-            </h2>
-            <h2 className="shrink-0 text-white text-9xl font-extralight italic">
-              Learn
-            </h2>
-            <h2 className="shrink-0 text-white text-13xl font-bold">
-              Practice
-            </h2>
-            <h2 className="shrink-0 text-transparent text-13xl font-bold outline-text italic">
-              Creative
-            </h2>
-          </div>
-        </div>
-      </div>
     </>
   );
 };

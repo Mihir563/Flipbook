@@ -1,5 +1,5 @@
 import { useCursor, useTexture } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useAtom } from "jotai";
 import { easing } from "maath";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,20 +15,23 @@ import {
   SRGBColorSpace,
   Uint16BufferAttribute,
   Vector3,
+  Vector2,
 } from "three";
 import { degToRad } from "three/src/math/MathUtils.js";
-import { pageAtom, pages } from "./UI";
+import { pageAtom, pages, splitImageModeAtom } from "./UI";
 
-const easingFactor = 0.5; // Controls the speed of the easing
-const easingFactorFold = 0.3; // Controls the speed of the easing
-const insideCurveStrength = 0.18; // Controls the strength of the curve
-const outsideCurveStrength = 0.05; // Controls the strength of the curve
-const turningCurveStrength = 0.09; // Controls the strength of the curve
+// Reduced animation settings for a steady book
+const easingFactor = 0.2;
+const easingFactorFold = 0.05;
+const insideCurveStrength = 0.156;
+const outsideCurveStrength = 0;
+const turningCurveStrength = 0;
+const COVER_SPINE_RADIUS = 0.2;
 
-const PAGE_WIDTH = 1.28;
-const PAGE_HEIGHT = 1.71; // 4:3 aspect ratio
+const PAGE_WIDTH = 2.6;
+const PAGE_HEIGHT = 1.92;
 const PAGE_DEPTH = 0.003;
-const PAGE_SEGMENTS = 30;
+const PAGE_SEGMENTS = 160;
 const SEGMENT_WIDTH = PAGE_WIDTH / PAGE_SEGMENTS;
 
 const pageGeometry = new BoxGeometry(
@@ -68,42 +71,44 @@ pageGeometry.setAttribute(
 );
 
 const whiteColor = new Color("white");
-const emissiveColor = new Color("orange");
+const defaultColor = new Color("white");
 
 const pageMaterials = [
   new MeshStandardMaterial({
-    color: whiteColor,
+    color: "",
   }),
   new MeshStandardMaterial({
-    color: "#111",
+    color: "",
   }),
   new MeshStandardMaterial({
-    color: whiteColor,
+    color: "",
   }),
   new MeshStandardMaterial({
-    color: whiteColor,
+    color: "",
   }),
 ];
 
-pages.forEach((page) => {
-  useTexture.preload(`/textures/${page.front}.jpg`);
-  useTexture.preload(`/textures/${page.back}.jpg`);
-  useTexture.preload(`/textures/book-cover-roughness.jpg`);
-});
+// Function to modify texture offset and repeat for split images
 
-const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
-  const [picture, picture2, pictureRoughness] = useTexture([
-    `/textures/${front}.jpg`,
-    `/textures/${back}.jpg`,
-    ...(number === 0 || number === pages.length - 1
-      ? [`/textures/book-cover-roughness.jpg`]
-      : []),
-  ]);
-  picture.colorSpace = picture2.colorSpace = SRGBColorSpace;
+const Page = ({
+  number,
+  front,
+  back,
+  page,
+  opened,
+  bookClosed,
+  splitImages = false,
+  frontIndex = 0,
+  backIndex = 1,
+  isCover = false,
+  ...props
+}) => {
+  // Load textures directly from URLs
+  const [frontTexture, backTexture] = useTexture([front, back]);
+  frontTexture.colorSpace = backTexture.colorSpace = SRGBColorSpace;
   const group = useRef();
   const turnedAt = useRef(0);
   const lastOpened = useRef(opened);
-
   const skinnedMeshRef = useRef();
 
   const manualSkinnedMesh = useMemo(() => {
@@ -117,40 +122,91 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
         bone.position.x = SEGMENT_WIDTH;
       }
       if (i > 0) {
-        bones[i - 1].add(bone); // attach the new bone to the previous bone
+        bones[i - 1].add(bone);
       }
     }
     const skeleton = new Skeleton(bones);
 
-    const materials = [
-      ...pageMaterials,
-      new MeshStandardMaterial({
-        color: whiteColor,
-        map: picture,
-        ...(number === 0
-          ? {
-              roughnessMap: pictureRoughness,
-            }
-          : {
-              roughness: 0.1,
-            }),
-        emissive: emissiveColor,
-        emissiveIntensity: 0,
-      }),
-      new MeshStandardMaterial({
-        color: whiteColor,
-        map: picture2,
-        ...(number === pages.length - 1
-          ? {
-              roughnessMap: pictureRoughness,
-            }
-          : {
-              roughness: 0.1,
-            }),
-        emissive: emissiveColor,
-        emissiveIntensity: 0,
-      }),
-    ];
+    let frontMaterial, backMaterial;
+
+    // Front of cover is always full image
+    frontMaterial = new MeshStandardMaterial({
+      color: "",
+      map: frontTexture,
+      roughness: 0.1,
+    });
+
+    // Back of cover should be split if in split image mode
+    if (isCover && splitImages) {
+      const backTextureClone = backTexture.clone();
+
+      // Set texture repeat to show only half the image for back texture
+      backTextureClone.repeat.set(0.52, 1);
+
+      // Back of cover should show left half of the image
+      backTextureClone.offset.set(0, 0);
+
+      backTextureClone.needsUpdate = true;
+
+      backMaterial = new MeshStandardMaterial({
+        color: "",
+        map: backTextureClone,
+        roughness: 0.1,
+      });
+    } else if (splitImages && !isCover) {
+      // For split image mode on regular pages:
+      const frontTextureClone = frontTexture.clone();
+      const backTextureClone = backTexture.clone();
+
+      // Set texture repeat to show only half the image for both textures
+      frontTextureClone.repeat.set(0.5, 1);
+      backTextureClone.repeat.set(0.52, 1);
+
+      // Front (right side of page): right half of image
+      frontTextureClone.offset.set(0.5, 0);
+      // Back (left side of page): left half of next image
+      backTextureClone.offset.set(0, 0);
+
+      frontTextureClone.needsUpdate = true;
+      backTextureClone.needsUpdate = true;
+
+      frontMaterial = new MeshStandardMaterial({
+        color: "",
+        map: frontTextureClone,
+        roughness: 0.1,
+      });
+
+      backMaterial = new MeshStandardMaterial({
+        color: "",
+        map: backTextureClone,
+        roughness: 0.1,
+      });
+    } else {
+      // / **Full Pages (No split, use full image)**
+      frontMaterial = new MeshStandardMaterial({
+        color: "",
+        map: frontTexture,
+        roughness: 0.1,
+      });
+
+      backMaterial = new MeshStandardMaterial({
+        color: "",
+        map: backTexture,
+        roughness: 0.1,
+      });
+
+      // **Ensure full-page properties**
+      frontTexture.repeat.set(1.02, 1);
+      frontTexture.offset.set(0, 0);
+      backTexture.repeat.set(1.02, 1);
+      backTexture.offset.set(0, 0);
+
+      frontTexture.needsUpdate = true;
+      backTexture.needsUpdate = true;
+    }
+
+    const materials = [...pageMaterials, frontMaterial, backMaterial];
+
     const mesh = new SkinnedMesh(pageGeometry, materials);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -158,33 +214,26 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
     mesh.add(skeleton.bones[0]);
     mesh.bind(skeleton);
     return mesh;
-  }, []);
-
-  // useHelper(skinnedMeshRef, SkeletonHelper, "red");
+  }, [frontTexture, backTexture, splitImages, isCover]);
 
   useFrame((_, delta) => {
     if (!skinnedMeshRef.current) {
       return;
     }
 
-    const emissiveIntensity = highlighted ? 0.22 : 0;
-    skinnedMeshRef.current.material[4].emissiveIntensity =
-      skinnedMeshRef.current.material[5].emissiveIntensity = MathUtils.lerp(
-        skinnedMeshRef.current.material[4].emissiveIntensity,
-        emissiveIntensity,
-        0.1
-      );
-
     if (lastOpened.current !== opened) {
       turnedAt.current = +new Date();
       lastOpened.current = opened;
     }
-    let turningTime = Math.min(400, new Date() - turnedAt.current) / 400;
+
+    // Faster page transition for stability
+    let turningTime = Math.min(200, new Date() - turnedAt.current) / 200;
     turningTime = Math.sin(turningTime * Math.PI);
 
-    let targetRotation = opened ? -Math.PI / 2 : Math.PI / 2;
+    let targetRotation = opened ? -Math.PI / 2 : Math.PI / 2; // left pages angle
     if (!bookClosed) {
-      targetRotation += degToRad(number * 0.8);
+      // Reduced angle for stability
+      targetRotation += degToRad(number * 0.4);
     }
 
     const bones = skinnedMeshRef.current.skeleton.bones;
@@ -194,12 +243,16 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       const insideCurveIntensity = i < 8 ? Math.sin(i * 0.2 + 0.25) : 0;
       const outsideCurveIntensity = i >= 8 ? Math.cos(i * 0.3 + 0.09) : 0;
       const turningIntensity =
-        Math.sin(i * Math.PI * (1 / bones.length)) * turningTime;
+        Math.sin(i * Math.PI * (1 / (bones.length - 1))) * turningTime;
+
       let rotationAngle =
         insideCurveStrength * insideCurveIntensity * targetRotation -
         outsideCurveStrength * outsideCurveIntensity * targetRotation +
         turningCurveStrength * turningIntensity * targetRotation;
-      let foldRotationAngle = degToRad(Math.sign(targetRotation) * 2);
+
+      // Reduced fold angle for stability
+      let foldRotationAngle = degToRad(Math.sign(targetRotation) * 0.2);
+
       if (bookClosed) {
         if (i === 0) {
           rotationAngle = targetRotation;
@@ -209,6 +262,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
           foldRotationAngle = 0;
         }
       }
+
       easing.dampAngle(
         target.rotation,
         "y",
@@ -221,6 +275,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
         i > 8
           ? Math.sin(i * Math.PI * (1 / bones.length) - 0.5) * turningTime
           : 0;
+
       easing.dampAngle(
         target.rotation,
         "x",
@@ -232,8 +287,10 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
   });
 
   const [_, setPage] = useAtom(pageAtom);
-  const [highlighted, setHighlighted] = useState(false);
-  useCursor(highlighted);
+  const [hovered, setHovered] = useState(false);
+  const [canClick, setCanClick] = useState(true);
+
+  useCursor(hovered);
 
   return (
     <group
@@ -241,22 +298,30 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       ref={group}
       onPointerEnter={(e) => {
         e.stopPropagation();
-        setHighlighted(true);
+        setHovered(true);
       }}
       onPointerLeave={(e) => {
         e.stopPropagation();
-        setHighlighted(false);
+        setHovered(false);
       }}
       onClick={(e) => {
         e.stopPropagation();
+        if (!canClick) return;
+
+        setCanClick(false);
         setPage(opened ? number : number + 1);
-        setHighlighted(false);
+        setHovered(false);
+
+        // Increase the delay before allowing another click
+        setTimeout(() => {
+          setCanClick(true);
+        }, 500);
       }}
     >
       <primitive
         object={manualSkinnedMesh}
         ref={skinnedMeshRef}
-        position-z={-number * PAGE_DEPTH + page * PAGE_DEPTH}
+        position-z={-number * PAGE_DEPTH * 1.01 + page * PAGE_DEPTH * 0.01}
       />
     </group>
   );
@@ -264,45 +329,147 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
 
 export const Book = ({ ...props }) => {
   const [page] = useAtom(pageAtom);
+  const [splitImageMode] = useAtom(splitImageModeAtom);
   const [delayedPage, setDelayedPage] = useState(page);
 
+  const { viewport, size } = useThree();
+
+  // Enhanced responsive scaling based on viewport and screen size
+  const scale = useMemo(() => {
+    // Get the current viewport dimensions
+    const { width, height } = viewport;
+    // Get actual screen pixel dimensions
+    const { width: screenWidth } = size;
+
+    // Base the scale on the smaller dimension (width or height)
+    const minDimension = Math.min(width, height);
+
+    // Apply a more aggressive scaling for smaller screens
+    let baseScale = minDimension / 4;
+
+    // Apply additional scaling based on screen width breakpoints
+    if (screenWidth < 480) {
+      // Mobile phones
+      baseScale *= 0.7;
+    } else if (screenWidth < 768) {
+      // Tablets
+      baseScale *= 0.8;
+    } else if (screenWidth < 1024) {
+      // Small laptops
+      baseScale *= 0.9;
+    }
+
+    // Ensure scale stays within reasonable bounds
+    return Math.max(0.4, Math.min(1.2, baseScale));
+  }, [viewport.width, viewport.height, size.width]);
+
   useEffect(() => {
-    let timeout;
+    // Clear all previous timeouts when page changes
+    const timeoutIds = [];
+    let isTransitioning = false;
+
     const goToPage = () => {
-      setDelayedPage((delayedPage) => {
-        if (page === delayedPage) {
-          return delayedPage;
+      if (isTransitioning) return;
+
+      setDelayedPage((currentDelayedPage) => {
+        if (page === currentDelayedPage) {
+          isTransitioning = false;
+          return currentDelayedPage;
         } else {
-          timeout = setTimeout(
-            () => {
-              goToPage();
-            },
-            Math.abs(page - delayedPage) > 2 ? 50 : 150
-          );
-          if (page > delayedPage) {
-            return delayedPage + 1;
-          }
-          if (page < delayedPage) {
-            return delayedPage - 1;
-          }
+          isTransitioning = true;
+          const nextPage =
+            page > currentDelayedPage
+              ? currentDelayedPage + 1
+              : currentDelayedPage - 1;
+
+          const timeoutId = setTimeout(() => {
+            isTransitioning = false;
+            goToPage();
+          }, 250); // Increased timing for more stability
+
+          timeoutIds.push(timeoutId);
+          return nextPage;
         }
       });
     };
+
+    // Start the transition
     goToPage();
+
+    // Cleanup function
     return () => {
-      clearTimeout(timeout);
+      timeoutIds.forEach((id) => clearTimeout(id));
     };
   }, [page]);
 
+  // Function to get the appropriate pages for each position
+  const getPagesForBook = () => {
+    if (!splitImageMode) {
+      return pages
+        .map((pageData, index) => ({
+          ...pageData,
+          number: index,
+        }))
+        .slice(0, -1);
+    }
+
+    // For split image mode, create a new array with proper pairing
+    const organizedPages = [];
+
+    // First add the cover (front is full image, back should be part of the split)
+    if (pages.length > 0 && pages[0].isCover) {
+      // Get the next page to link with back of cover if available
+      const nextPage = pages.length > 1 ? pages[1] : null;
+
+      organizedPages.push({
+        ...pages[0],
+        // If there's a next page, use its front image for the back of the cover
+        back: nextPage ? nextPage.front : pages[0].back,
+        number: 0,
+      });
+    }
+
+    // Then add the regular pages with proper pairing for split images
+    // Start from index 1 if there's a cover, otherwise from 0
+    const startIndex = pages[0].isCover ? 1 : 0;
+
+    // Skip the page that was used for the back of the cover
+    for (let i = startIndex; i < pages.length; i++) {
+      // Get current page data
+      const currentPage = pages[i];
+      // Get next page data if available
+      const nextPage = i + 1 < pages.length ? pages[i + 1] : null;
+
+      organizedPages.push({
+        ...currentPage,
+        // If it's not the last page, back should be the next page's front
+        back: nextPage ? nextPage.front : currentPage.back,
+        number: organizedPages.length,
+      });
+    }
+
+    return organizedPages.slice(0, -1);
+  };
+
+  const organizedPages = getPagesForBook();
+
   return (
-    <group {...props} rotation-y={-Math.PI / 2}>
-      {[...pages].map((pageData, index) => (
+    <group {...props} rotation-y={-Math.PI / 2} rotation-z={0.1}>
+      {organizedPages.map((pageData, index) => (
         <Page
           key={index}
+          front={pageData.front}
+          back={pageData.back}
           page={delayedPage}
-          number={index}
-          opened={delayedPage > index}
-          bookClosed={delayedPage === 0 || delayedPage === pages.length}
+          number={pageData.number}
+          opened={delayedPage > pageData.number}
+          bookClosed={
+            delayedPage === 0 || delayedPage === organizedPages.length
+          }
+          splitImages={splitImageMode}
+          frontIndex={pageData.frontIndex || 0}
+          backIndex={pageData.backIndex || 0}
+          isCover={pageData.isCover || false}
           {...pageData}
         />
       ))}

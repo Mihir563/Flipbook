@@ -1,29 +1,27 @@
-import { Environment, Float, OrbitControls } from "@react-three/drei";
+import { Environment, OrbitControls } from "@react-three/drei";
 import { Book } from "./Book";
-export const Experience = () => {
+
+export const Experience = ({ projectData }) => {
   return (
     <>
-      <Float
-        rotation-x={-Math.PI / 4}
-        floatIntensity={1}
-        speed={2}
-        rotationIntensity={2}
-      >
-        <Book />
-      </Float>
-      <OrbitControls />
-      <Environment preset="studio"></Environment>
+      <Book position={[0, 0, 0]} rotation={[-Math.PI / 10, 0, 0]} />
+      <OrbitControls
+        enableRotate={false}
+        enablePan={false}
+        enableZoom={false}
+      />
+      <Environment preset="city"></Environment>
       <directionalLight
-        position={[2, 5, 2]}
-        intensity={2.5}
+        position={[2, 5, 5]}
+        intensity={0.5}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-bias={-0.0001}
       />
-      <mesh position-y={-1.5} rotation-x={-Math.PI / 2} receiveShadow>
-        <planeGeometry args={[100, 100]} />
-        <shadowMaterial transparent opacity={0.2} />
+      <mesh position-y={-1.5} rotation-x={-Math.PI / 8} receiveShadow>
+        <planeGeometry args={[10, 10]} />
+        <shadowMaterial transparent opacity={0.1} />
       </mesh>
     </>
   );
