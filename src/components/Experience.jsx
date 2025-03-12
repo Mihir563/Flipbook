@@ -12,7 +12,11 @@ export const Experience = ({ projectData }) => {
       />
       <Environment preset="city"></Environment>
       <directionalLight
+<<<<<<< HEAD
         position={[2, 6, 4]}
+=======
+        position={[2, 5, 5]}
+>>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
         intensity={0.5}
         castShadow
         shadow-mapSize-width={2048}
