@@ -2,11 +2,8 @@ import { atom, useAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import AudioPlayer from "./AudioPlayer";
-<<<<<<< HEAD
 import { FullscreenButton } from './FullScreen';
 import { AutoPlayControls } from "./AutoPlay";
-=======
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
 
 export const pageAtom = atom(0);
 // Add a new atom to track the display mode
@@ -21,15 +18,9 @@ export const createPagesFromData = (data, splitImageMode = false) => {
   const imageUrls = [];
 
   // Extract all image URLs from the data
-<<<<<<< HEAD
   if (data && typeof data.ImagesServer === "object" && data.ImagesServer !== null) {
     for (const key in data.ImagesServer) {
       if (Object.prototype.hasOwnProperty.call(data.ImagesServer, key)) {
-=======
-  if (data && data.ImagesServer) {
-    for (const key in data.ImagesServer) {
-      if (data.ImagesServer.hasOwnProperty(key)) {
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
         imageUrls.push(data.ImagesServer[key]);
       }
     }
@@ -124,7 +115,6 @@ export const UI = ({ albumId }) => {
   const [loading, setLoading] = useAtom(loadingAtom);
   const [error, setError] = useAtom(errorAtom);
   const [title, setTitle] = useState("Photo Album");
-<<<<<<< HEAD
   const [audioUrl, setAudioUrl] = useState("");
   const [screenSize, setScreenSize] = useState({
     isMobile: false,
@@ -145,29 +135,12 @@ export const UI = ({ albumId }) => {
 
     // Initial check
     checkScreenSize();
-=======
-  const [isMobile, setIsMobile] = useState(false);
-  const [audioUrl, setAudioUrl] = useState("");
-
-  // Check window size for responsive layout
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    // Initial check
-    checkMobile();
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
 
     // Add event listener with debounce
     let resizeTimer;
     const handleResize = () => {
       clearTimeout(resizeTimer);
-<<<<<<< HEAD
       resizeTimer = setTimeout(checkScreenSize, 150);
-=======
-      resizeTimer = setTimeout(checkMobile, 100);
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
     };
 
     window.addEventListener("resize", handleResize);
@@ -192,26 +165,15 @@ export const UI = ({ albumId }) => {
           `https://studio.codnix.com/creation/ealbum/${albumId}.json`
         );
         setProjectData(response.data);
-<<<<<<< HEAD
         console.log(response.data)
 
         // Determine split image mode based on SingleSided property
-=======
-
-        // Determine split image mode based on SingleSided property
-        // If SingleSided is true, we want full image mode (splitImageMode = false)
-        // If SingleSided is not specified or false, we want split image mode (splitImageMode = true)
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
         const shouldUseSplitMode =
           response.data.SingleSided === undefined ||
           response.data.SingleSided === false;
         setSplitImageMode(shouldUseSplitMode);
 
         // Initialize pages with the fetched data
-<<<<<<< HEAD
-=======
-        // Now using the automatically determined split mode
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
         initializePages(response.data, shouldUseSplitMode);
 
         // Set the title from project data if available
@@ -233,7 +195,6 @@ export const UI = ({ albumId }) => {
     fetchData();
   }, [albumId, setProjectData, setLoading, setError, setSplitImageMode]);
 
-<<<<<<< HEAD
   // Function to navigate pages with keyboard support
   const handleKeyNavigation = (e) => {
     if (e.key === "ArrowLeft" && page > 0) {
@@ -255,14 +216,6 @@ export const UI = ({ albumId }) => {
         <div className="text-white flex flex-col items-center px-4 py-6 rounded-lg ">
           <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-blue-500 border-blue-200/30 rounded-full animate-spin mb-3"></div>
           <span className="text-sm sm:text-base md:text-lg">Loading album...</span>
-=======
-  if (loading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-30">
-        <div className="text-white text-base sm:text-xl flex flex-col items-center">
-          <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-blue-500 border-blue-200/30 rounded-full animate-spin mb-3"></div>
-          <span>Loading album...</span>
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
         </div>
       </div>
     );
@@ -271,11 +224,7 @@ export const UI = ({ albumId }) => {
   if (error) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-30 p-4">
-<<<<<<< HEAD
         <div className="text-white text-sm sm:text-base bg-red-500/50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-md text-center">
-=======
-        <div className="text-white text-sm sm:text-base md:text-xl bg-red-500/50 p-3 sm:p-4 rounded-lg max-w-md text-center">
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
           <div className="text-2xl sm:text-3xl mb-2">⚠️</div>
           {error}
           <button
@@ -292,7 +241,6 @@ export const UI = ({ albumId }) => {
   return (
     <>
       <main className="pointer-events-none select-none z-10 fixed inset-0 flex justify-between flex-col">
-<<<<<<< HEAD
         
         {/* Top header with title and audio player */}
         
@@ -325,35 +273,11 @@ export const UI = ({ albumId }) => {
               className="pointer-events-auto text-white bg-black/50 hover:bg-black/70 
                         border border-white/20 px-3 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm 
                         transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-=======
-        <div
-          className={`w-full ${isMobile ? "p-2" : "p-4"} flex ${
-            isMobile ? "flex-col gap-2" : "justify-between items-center"
-          }`}
-        >
-          <h1
-            className={`bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent 
-    font-bold px-3 py-1 sm:px-4 sm:py-2 rounded-lg truncate max-w-full 
-    ${isMobile ? "text-lg w-full text-center" : "text-xl md:text-2xl"}`}
-          >
-            {title}
-          </h1>
-
-          <div>{audioUrl && <AudioPlayer audioUrl={audioUrl} />}</div>
-        </div>
-
-        {/* Add page navigation controls for mobile at the bottom */}
-        {isMobile && (
-          <div className="w-full p-2 flex justify-center gap-4 mb-2">
-            <button
-              className="pointer-events-auto text-white bg-black/40 hover:bg-black/60 px-6 py-2 rounded-lg text-sm"
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
               onClick={() => page > 0 && setPage(page - 1)}
               disabled={page === 0}
             >
               ← Prev
             </button>
-<<<<<<< HEAD
             
             <div className="pointer-events-auto flex items-center">
               <span className="text-white bg-black/30 px-3 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm border border-white/10">
@@ -365,26 +289,14 @@ export const UI = ({ albumId }) => {
               className="pointer-events-auto text-white bg-black/50 hover:bg-black/70 
                         border border-white/20 px-3 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm 
                         transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-=======
-            <button
-              className="pointer-events-auto text-white bg-black/40 hover:bg-black/60 px-6 py-2 rounded-lg text-sm"
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
               onClick={() => page < pages.length - 1 && setPage(page + 1)}
               disabled={page === pages.length - 1}
             >
               Next →
             </button>
           </div>
-<<<<<<< HEAD
         </div>
       </main>
     </>
   );
 };
-=======
-        )}
-      </main>
-    </>
-  );
-};
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5

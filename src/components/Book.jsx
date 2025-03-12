@@ -21,13 +21,9 @@ import { degToRad } from "three/src/math/MathUtils.js";
 import { pageAtom, pages, splitImageModeAtom } from "./UI";
 
 // Reduced animation settings for a steady book
-<<<<<<< HEAD
 const easingFactor = 0.3;
-=======
-const easingFactor = 0.2;
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
 const easingFactorFold = 0.05;
-const insideCurveStrength = 0.156;
+const insideCurveStrength = 0.16;
 const outsideCurveStrength = 0;
 const turningCurveStrength = 0;
 const COVER_SPINE_RADIUS = 0.2;
@@ -38,14 +34,11 @@ const PAGE_DEPTH = 0.003;
 const PAGE_SEGMENTS = 160;
 const SEGMENT_WIDTH = PAGE_WIDTH / PAGE_SEGMENTS;
 
-<<<<<<< HEAD
 // Add new atoms for autoplay functionality
 import { atom } from "jotai";
 export const autoPlayAtom = atom(false);
 export const autoPlaySpeedAtom = atom(3000); // milliseconds between page turns
 
-=======
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
 const pageGeometry = new BoxGeometry(
   PAGE_WIDTH,
   PAGE_HEIGHT,
@@ -100,11 +93,6 @@ const pageMaterials = [
   }),
 ];
 
-<<<<<<< HEAD
-=======
-// Function to modify texture offset and repeat for split images
-
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
 const Page = ({
   number,
   front,
@@ -116,10 +104,7 @@ const Page = ({
   frontIndex = 0,
   backIndex = 1,
   isCover = false,
-<<<<<<< HEAD
   autoPlay = false,
-=======
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
   ...props
 }) => {
   // Load textures directly from URLs
@@ -129,7 +114,6 @@ const Page = ({
   const turnedAt = useRef(0);
   const lastOpened = useRef(opened);
   const skinnedMeshRef = useRef();
-<<<<<<< HEAD
   const [isPlaying, setIsPlaying] = useState(autoPlay);
 
   useEffect(() => {
@@ -138,9 +122,6 @@ const Page = ({
     }
   }, [isPlaying]);
   
-=======
-
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
   const manualSkinnedMesh = useMemo(() => {
     const bones = [];
     for (let i = 0; i <= PAGE_SEGMENTS; i++) {
@@ -357,7 +338,6 @@ const Page = ({
   );
 };
 
-<<<<<<< HEAD
 export const Book = ({ autoPlay = false, autoPlaySpeed = 3000, ...props }) => {
   const [page, setPage] = useAtom(pageAtom);
   const [splitImageMode] = useAtom(splitImageModeAtom);
@@ -371,17 +351,10 @@ export const Book = ({ autoPlay = false, autoPlaySpeed = 3000, ...props }) => {
     setIsAutoPlaying(autoPlay);
     setAutoPlayInterval(autoPlaySpeed);
   }, [autoPlay, autoPlaySpeed, setIsAutoPlaying, setAutoPlayInterval]);
-=======
-export const Book = ({ ...props }) => {
-  const [page] = useAtom(pageAtom);
-  const [splitImageMode] = useAtom(splitImageModeAtom);
-  const [delayedPage, setDelayedPage] = useState(page);
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
 
   const { viewport, size } = useThree();
 
   // Enhanced responsive scaling based on viewport and screen size
-<<<<<<< HEAD
 // In the Book component, find the scale calculation and modify it:
 const scale = useMemo(() => {
   // Get the current viewport dimensions
@@ -415,76 +388,6 @@ const scale = useMemo(() => {
 }, [viewport.width, viewport.height, size.width]);
 
   // Function to get the appropriate pages for book
-=======
-  const scale = useMemo(() => {
-    // Get the current viewport dimensions
-    const { width, height } = viewport;
-    // Get actual screen pixel dimensions
-    const { width: screenWidth } = size;
-
-    // Base the scale on the smaller dimension (width or height)
-    const minDimension = Math.min(width, height);
-
-    // Apply a more aggressive scaling for smaller screens
-    let baseScale = minDimension / 4;
-
-    // Apply additional scaling based on screen width breakpoints
-    if (screenWidth < 480) {
-      // Mobile phones
-      baseScale *= 0.7;
-    } else if (screenWidth < 768) {
-      // Tablets
-      baseScale *= 0.8;
-    } else if (screenWidth < 1024) {
-      // Small laptops
-      baseScale *= 0.9;
-    }
-
-    // Ensure scale stays within reasonable bounds
-    return Math.max(0.4, Math.min(1.2, baseScale));
-  }, [viewport.width, viewport.height, size.width]);
-
-  useEffect(() => {
-    // Clear all previous timeouts when page changes
-    const timeoutIds = [];
-    let isTransitioning = false;
-
-    const goToPage = () => {
-      if (isTransitioning) return;
-
-      setDelayedPage((currentDelayedPage) => {
-        if (page === currentDelayedPage) {
-          isTransitioning = false;
-          return currentDelayedPage;
-        } else {
-          isTransitioning = true;
-          const nextPage =
-            page > currentDelayedPage
-              ? currentDelayedPage + 1
-              : currentDelayedPage - 1;
-
-          const timeoutId = setTimeout(() => {
-            isTransitioning = false;
-            goToPage();
-          }, 250); // Increased timing for more stability
-
-          timeoutIds.push(timeoutId);
-          return nextPage;
-        }
-      });
-    };
-
-    // Start the transition
-    goToPage();
-
-    // Cleanup function
-    return () => {
-      timeoutIds.forEach((id) => clearTimeout(id));
-    };
-  }, [page]);
-
-  // Function to get the appropriate pages for each position
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
   const getPagesForBook = () => {
     if (!splitImageMode) {
       return pages
@@ -534,7 +437,6 @@ const scale = useMemo(() => {
   };
 
   const organizedPages = getPagesForBook();
-<<<<<<< HEAD
   const totalPages = organizedPages.length;
 
   // Auto-play functionality
@@ -612,11 +514,6 @@ const scale = useMemo(() => {
 
   return (
     <group {...props} rotation-y={-Math.PI / 2} rotation-z={0.1} scale={[scale, scale, scale]} >
-=======
-
-  return (
-    <group {...props} rotation-y={-Math.PI / 2} rotation-z={0.1}>
->>>>>>> afe0522263be6c4cfefa0273cc5a342116f7e4a5
       {organizedPages.map((pageData, index) => (
         <Page
           key={index}
