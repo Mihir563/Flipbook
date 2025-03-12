@@ -242,28 +242,28 @@ export const UI = ({ albumId }) => {
     <>
       <main className="pointer-events-none select-none z-10 fixed inset-0 flex justify-between flex-col">
         
-        {/* Top header with title and audio player */}
-        
-        <div className={`w-full bg-gradient-to-b from-black/60 to-transparent 
-                        ${screenSize.isMobile ? 'px-2 py-2' : screenSize.isTablet ? 'px-4 py-3' : 'px-6 py-4'}`}>
-          <div className={`flex ${screenSize.isMobile ? 'flex-col gap-2' : 'justify-between items-center'}`}>
-            <h1
-              className={`bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent 
-                font-bold rounded-lg max-w-full 
-                ${screenSize.isMobile ? 'text-lg text-center w-full py-1' : 
-                  screenSize.isTablet ? 'text-xl py-1 px-2' : 'text-2xl py-2 px-3'}`}
-            >
-              {title}
-            </h1>
+       {/* Top header with title and audio player */}
+<div className={`w-full bg-gradient-to-b from-black/60 to-transparent 
+                ${screenSize.isMobile ? 'px-2 py-2' : screenSize.isTablet ? 'px-4 py-3' : 'px-6 py-4'}`}>
+  <div className="flex items-center justify-between gap-2">
+    {/* Title */}
+    <h1
+      className={`bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent 
+        font-bold rounded-lg max-w-full 
+        ${screenSize.isMobile ? 'text-lg text-center w-full py-1' : 
+          screenSize.isTablet ? 'text-xl py-1 px-2' : 'text-2xl py-2 px-3'}`}
+    >
+      {title}
+    </h1>
 
-
-            <div className={`${screenSize.isMobile ? 'w-full flex justify-center' : ''}`}>
-              {audioUrl && <AudioPlayer audioUrl={audioUrl} />}
-            </div>
-            <FullscreenButton />
-            <AutoPlayControls/>
-          </div>
-        </div>
+    {/* Icons and Audio */}
+    <div className="flex items-center gap-2">
+      {audioUrl && <AudioPlayer audioUrl={audioUrl} />}
+      <FullscreenButton />
+      <AutoPlayControls />
+    </div>
+  </div>
+</div>
 
         {/* Add page navigation controls */}
         <div className={`w-full ${screenSize.isMobile ? 'py-3' : 'py-4'} 

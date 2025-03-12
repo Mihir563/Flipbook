@@ -4,7 +4,10 @@ import { Book } from "./Book";
 export const Experience = ({ projectData }) => {
   return (
     <>
-      <Book position={[0, 0, 0]} rotation={[-Math.PI / 10, 0, 0]} />
+      <Book 
+        position={[0, 0, 0]} 
+        rotation={[-Math.PI / 10, 0, 0]} // Slightly reduced backward tilt
+      />
       <OrbitControls
         enableRotate={false}
         enablePan={false}

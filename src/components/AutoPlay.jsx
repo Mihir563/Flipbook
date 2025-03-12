@@ -175,6 +175,7 @@ export const AutoPlayControls = () => {
 
       {/* Floating action button for autoplay */}
       <button
+        title={isAutoPlaying? "Stop AutoPlay" : "AutoPlay"}
         onClick={toggleAutoPlay}
         className={`flex items-center justify-center gap-2 rounded-full px-4 py-2 shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 ${
           isAutoPlaying 
@@ -197,9 +198,6 @@ export const AutoPlayControls = () => {
             <svg xmlns="http://www.w3.org/2000/svg" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
-            <span className={`font-medium ${screenSize.isMobile ? 'text-xs' : 'text-sm'}`}>
-              Auto Play
-            </span>
           </>
         )}
       </button>

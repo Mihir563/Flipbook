@@ -1,3 +1,4 @@
+import { Volume2, VolumeX } from "lucide-react";
 import {useRef, useState} from "react";
 
 
@@ -28,21 +29,22 @@ const AudioPlayer = ({ audioUrl }) => {
     };
   
     return (
-      <div className="pointer-events-auto flex items-center  gap-2 bg-black/40 px-3 py-1 sm:px-4 sm:py-2 rounded-lg">
+      <div className="pointer-events-auto flex items-center  gap-2 bg-black/40 px-3 py-1 sm:px-4 sm:py-2 rounded-lg" title={isPlaying? "Stop Playing Song" : "Start Song"}>
         <audio ref={audioRef} src={audioUrl} loop />
         {isPlaying ? (
           <button 
+            
             onClick={stopAudio} 
             className="text-white justify-center hover:text-red-300 transition-colors flex items-center gap-1"
           >
-            <span className="hidden sm:inline">■ Stop </span>
+            <span className="hidden sm:inline"> <Volume2/> </span>
           </button>
         ) : (
           <button 
             onClick={playAudio} 
             className="text-white hover:text-green-300 transition-colors flex items-center gap-1"
           >
-            <span className="hidden sm:inline">▶ Play Audio</span>
+            <span className="hidden sm:inline"> <VolumeX/></span>
           </button>
         )}
       </div>

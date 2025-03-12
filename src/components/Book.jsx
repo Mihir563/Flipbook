@@ -22,11 +22,10 @@ import { pageAtom, pages, splitImageModeAtom } from "./UI";
 
 // Reduced animation settings for a steady book
 const easingFactor = 0.3;
-const easingFactorFold = 0.05;
-const insideCurveStrength = 0.16;
+const easingFactorFold = 0;
+const insideCurveStrength = 0.158;
 const outsideCurveStrength = 0;
 const turningCurveStrength = 0;
-const COVER_SPINE_RADIUS = 0.2;
 
 const PAGE_WIDTH = 2.6;
 const PAGE_HEIGHT = 1.92;
@@ -345,6 +344,8 @@ export const Book = ({ autoPlay = false, autoPlaySpeed = 3000, ...props }) => {
   const [isAutoPlaying, setIsAutoPlaying] = useAtom(autoPlayAtom);
   const [autoPlayInterval, setAutoPlayInterval] = useAtom(autoPlaySpeedAtom);
   const autoPlayTimerRef = useRef(null);
+  const bookGroupRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   // Initialize autoPlay from props
   useEffect(() => {
@@ -354,39 +355,69 @@ export const Book = ({ autoPlay = false, autoPlaySpeed = 3000, ...props }) => {
 
   const { viewport, size } = useThree();
 
-  // Enhanced responsive scaling based on viewport and screen size
-// In the Book component, find the scale calculation and modify it:
-const scale = useMemo(() => {
-  // Get the current viewport dimensions
-  const { width, height } = viewport;
-  // Get actual screen pixel dimensions
-  const { width: screenWidth } = size;
+  // Enhanced responsive scaling
+  const scale = useMemo(() => {
+    const { width, height } = viewport;
+    const { width: screenWidth } = size;
+    const minDimension = Math.min(width, height);
+    let baseScale = minDimension / 4;
 
-  // Base the scale on the smaller dimension (width or height)
-  const minDimension = Math.min(width, height);
+    if (screenWidth < 480) {
+      baseScale *= 0.7;
+    } else if (screenWidth < 768) {
+      baseScale *= 0.8;
+    } else if (screenWidth < 1024) {
+      baseScale *= 0.9;
+    }
+    
+    baseScale *= 1.15;
+    return Math.max(0.4, Math.min(1.8, baseScale));
+  }, [viewport.width, viewport.height, size.width]);
 
-  // Apply a more aggressive scaling for smaller screens
-  let baseScale = minDimension / 4;
+  // Update isOpen state when page changes
+  useEffect(() => {
+    if (page > 0) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  }, [page]);
 
-  // Apply additional scaling based on screen width breakpoints
-  if (screenWidth < 480) {
-    // Mobile phones
-    baseScale *= 0.7;
-  } else if (screenWidth < 768) {
-    // Tablets
-    baseScale *= 0.8;
-  } else if (screenWidth < 1024) {
-    // Small laptops
-    baseScale *= 0.9;
-  }
-
-  // Increase the overall scale by multiplying by a factor (e.g., 1.5 for 50% larger)
-  baseScale *= 1.3; // Adjust this multiplier to make the book bigger
-
-  // Ensure scale stays within reasonable bounds
-  return Math.max(0.4, Math.min(1.8, baseScale)); // Increased upper bound to allow for larger scaling
-}, [viewport.width, viewport.height, size.width]);
-
+  // Animation for book opening/closing transition
+  useFrame((state, delta) => {
+    if (!bookGroupRef.current) return;
+    
+    // Center position when closed, offset when open
+    const targetPositionX = isOpen ? -1.3 : 0;
+    
+    // Smooth transition for position
+    easing.damp3(
+      bookGroupRef.current.position,
+      [targetPositionX, 0, 0],
+      0.15,
+      delta
+    );
+    
+    // Gradually change Y-rotation when opening/closing
+    const targetRotationY = isOpen ? -Math.PI / 2 : -Math.PI / 2.5;
+    easing.dampAngle(
+      bookGroupRef.current.rotation,
+      "y",
+      targetRotationY,
+      0.15,
+      delta
+    );
+    
+    // Z-axis rotation (tilt) adjustment
+    const targetRotationZ = isOpen ? 0.02 : 0.1;
+    easing.dampAngle(
+      bookGroupRef.current.rotation,
+      "z",
+      targetRotationZ,
+      0.15,
+      delta
+    );
+  });
   // Function to get the appropriate pages for book
   const getPagesForBook = () => {
     if (!splitImageMode) {
@@ -513,7 +544,7 @@ const scale = useMemo(() => {
   }, [page]);
 
   return (
-    <group {...props} rotation-y={-Math.PI / 2} rotation-z={0.1} scale={[scale, scale, scale]} >
+    <group {...props} rotation-y={-Math.PI / 2} rotation-z={0.1} rotation-x={-0.2} scale={[scale, scale, scale]}  >
       {organizedPages.map((pageData, index) => (
         <Page
           key={index}

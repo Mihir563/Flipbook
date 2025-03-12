@@ -190,9 +190,9 @@ function App() {
           <UI albumId={albumId} />
           
           {/* Bottom status bar - more responsive text sizing and positioning */}
-          <div className="fixed bottom-0 mt-2 left-0 right-0 z-20 p-1 sm:p-2 flex justify-between items-center text-xxs sm:text-xs text-slate-400 ">
+          {/* <div className="fixed bottom-0 mt-2 left-0 right-0 z-20 p-1 sm:p-2 flex justify-between items-center text-xxs sm:text-xs text-slate-400 ">
             <span className="truncate opacity-70 hover:opacity-100 transition-opacity">Powered by Codnix Studio © {new Date().getFullYear()}</span>
-          </div>
+          </div> */}
         </div>
       )}
     </div>

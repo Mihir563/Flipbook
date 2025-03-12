@@ -58,6 +58,7 @@ export const FullscreenButton = () => {
   
   return (
     <button
+      title={isFullscreen? 'Exit FullScreen': 'FullScreen'}
       onClick={toggleFullscreen}
       className="pointer-events-auto text-white bg-black/50 hover:bg-black/70 
                 border border-white/20 px-3 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm 
@@ -69,14 +70,12 @@ export const FullscreenButton = () => {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
-          <span className="hidden sm:inline">Exit</span>
         </>
       ) : (
         <>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
           </svg>
-          <span className="hidden sm:inline">Fullscreen</span>
         </>
       )}
     </button>
