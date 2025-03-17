@@ -43,6 +43,23 @@ export const ARBook = ({ projectData, autoPlay = false }) => {
       </Text>
     </mesh>
   );
+
+  
+  if (!navigator.xr) {
+    console.error("WebXR not supported on this browser.");
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black/90 z-40 p-4">
+        <div className="bg-red-900/50 border border-red-800 rounded-lg p-4 sm:p-6 max-w-xs sm:max-w-sm md:max-w-md text-center">
+          <h2 className="text-lg sm:text-xl font-bold mb-2">
+            AR Mode Not Supported
+          </h2>
+          <p className="mb-4 text-sm sm:text-base">
+            Your browser does not support WebXR, which is required for AR mode.
+          </p>
+        </div>
+      </div>
+    );
+  }
   
   // Use simplified placement logic
   useFrame((state, delta) => {
