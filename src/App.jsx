@@ -1,9 +1,16 @@
 import { Loader } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Suspense, useState, useEffect, useRef } from "react";
+import { XR } from "@react-three/xr";
+import * as THREE from "three";
 import { Experience } from "./components/Experience";
 import { UI, createPagesFromData } from "./components/UI";
+import { ARInstructions } from "./components/Instruction";
+import { ARButton } from "./components/ARButton";
+import { XRProvider } from "./components/XRProvider";
 import axios from "axios";  
+import { ErrorBoundary } from "react-error-boundary";
+import { XR as ThreeXR } from "@react-three/xr";
 
 function App() {
   const [albumId, setAlbumId] = useState("");
@@ -12,6 +19,7 @@ function App() {
   const [error, setError] = useState(null);
   const [albumData, setAlbumData] = useState(null);
   const [showInput, setShowInput] = useState(true);
+  const [isARMode, setIsARMode] = useState(false);
   
   // Reference for canvas container
   const canvasContainerRef = useRef(null);
@@ -40,19 +48,16 @@ function App() {
       }
     };
     
-    // Set initial position
     handleResize();
     
-    // Add event listener with better debounce to prevent excessive recalculations
     let resizeTimer;
     const debouncedResize = () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(handleResize, 150); // Slightly longer timeout for performance
+      resizeTimer = setTimeout(handleResize, 150);
     };
     
     window.addEventListener('resize', debouncedResize);
     
-    // Clean up
     return () => {
       clearTimeout(resizeTimer);
       window.removeEventListener('resize', debouncedResize);
@@ -70,7 +75,6 @@ function App() {
       const response = await axios.get(`https://studio.codnix.com/creation/ealbum/${id}.json`);
       setAlbumData(response.data);
       setLoading(false);
-      // Hide input after successful load
       setShowInput(false);
     } catch (err) {
       console.error("Error fetching album:", err);
@@ -106,12 +110,23 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
   
+  // Toggle AR mode
+  const toggleARMode = () => {
+    setIsARMode(!isARMode);
+  };
+  useEffect(() => {
+    if (!navigator.xr) {
+      console.warn('WebXR not supported on this device.');
+    }
+  }, []);
+  
+  
   return (
     <div className="relative min-h-screen w-full h-full overflow-hidden bg-zinc-800 text-white " 
          ref={canvasContainerRef} 
          >
       
-      {/* Album Code Input - responsive and improved UI */}
+      {/* Album Code Input */}
       {showInput && (
         <div className="fixed inset-0 z-50 bg-white/0 backdrop-blur-sm p-3 sm:p-4 md:p-6 flex justify-center items-center">
           <div className="w-full max-w-md bg-zinc-900/40 p-4 sm:p-6 rounded-xl shadow-lg">
@@ -136,7 +151,7 @@ function App() {
         </div>
       )}
       
-      {/* Loading Overlay - improved responsive design */}
+      {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/90 z-40 p-4">
           <div className="w-12 h-12 sm:w-16 sm:h-16 mb-4 relative">
@@ -147,7 +162,7 @@ function App() {
         </div>
       )}
       
-      {/* Error Display - improved responsive design */}
+      {/* Error Display */}
       {error && !loading && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/90 z-40 p-4">
           <div className="bg-red-900/50 border border-red-800 rounded-lg p-4 sm:p-6 max-w-xs sm:max-w-sm md:max-w-md text-center">
@@ -172,27 +187,67 @@ function App() {
         </div>
       )}
       
-      {/* 3D Canvas and UI */}
-      {!loading && !error && albumData && (
+       {/* 3D Canvas and UI */}
+       {!loading && !error && albumData && (
         <div className="relative inset-0 w-full h-full">
-          <Canvas 
-            shadows
-            camera={{
-              position: cameraPosition,
-              fov: 45,
-            }}
-            style={{ width: '100%', height: '100%' }}
+          {/* Standard Canvas with robust error handling */}
+          <ErrorBoundary
+            FallbackComponent={() => (
+              <div className="fixed inset-0 flex items-center justify-center bg-black/90 z-40 p-4">
+                <div className="bg-red-900/50 border border-red-800 rounded-lg p-4 sm:p-6 max-w-xs sm:max-w-sm md:max-w-md text-center">
+                  <h2 className="text-lg sm:text-xl font-bold mb-2">WebGL Error</h2>
+                  <p className="mb-4 text-sm sm:text-base">There was an error loading the 3D viewer. Please try refreshing the page.</p>
+                </div>
+              </div>
+            )}
           >
-            <Suspense fallback={null}>
-              <Experience projectData={albumData} autoPlay={true} />
-            </Suspense>
-          </Canvas>
+<Canvas
+  shadows
+  camera={{
+    position: cameraPosition,
+    fov: 45,
+  }}
+  style={{ width: '100%', height: '100vh' }}
+  gl={{ 
+    alpha: true,
+    antialias: true,
+    preserveDrawingBuffer: true,
+    powerPreference: "high-performance"
+  }}
+  onCreated={({ gl }) => {
+    gl.setClearColor(new THREE.Color(0x000000), 0);
+  }}
+>
+  <ErrorBoundary
+    FallbackComponent={({ error }) => {
+      console.error("XR Scene Error:", error);
+      return null;
+    }}
+  >
+    <Suspense fallback={null}>
+      {/* Important: Move XR inside the Canvas */}
+      <ThreeXR>
+        <Experience 
+          projectData={albumData} 
+          autoPlay={true}
+          isARMode={isARMode}
+        />
+      </ThreeXR>
+    </Suspense>
+  </ErrorBoundary>
+</Canvas>
+          </ErrorBoundary>
+          
+          {/* UI Components */}
           <UI albumId={albumId} />
           
-          {/* Bottom status bar - more responsive text sizing and positioning */}
-          {/* <div className="fixed bottom-0 mt-2 left-0 right-0 z-20 p-1 sm:p-2 flex justify-between items-center text-xxs sm:text-xs text-slate-400 ">
-            <span className="truncate opacity-70 hover:opacity-100 transition-opacity">Powered by Codnix Studio © {new Date().getFullYear()}</span>
-          </div> */}
+          {/* AR Button */}
+          <div className="fixed bottom-4 right-4 z-20">
+            <ARButton onClick={toggleARMode} isARMode={isARMode} />
+          </div>
+          
+          {/* AR Instructions - only shown when in AR mode */}
+          {isARMode && <ARInstructions />}
         </div>
       )}
     </div>
