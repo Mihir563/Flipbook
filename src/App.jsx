@@ -3,7 +3,8 @@ import { Canvas } from "@react-three/fiber";
 import { Suspense, useState, useEffect, useRef } from "react";
 import { Experience } from "./components/Experience";
 import { UI, createPagesFromData } from "./components/UI";
-import axios from "axios";  
+import MindARComponent from "./components/MindAR";  // Import the AR component
+import axios from "axios";
 
 function App() {
   const [albumId, setAlbumId] = useState("");
@@ -12,13 +13,14 @@ function App() {
   const [error, setError] = useState(null);
   const [albumData, setAlbumData] = useState(null);
   const [showInput, setShowInput] = useState(true);
-  
+  const [arMode, setARMode] = useState(false);  // New state for AR mode
+
   // Reference for canvas container
   const canvasContainerRef = useRef(null);
-  
+
   // Responsive camera position based on screen size
   const [cameraPosition, setCameraPosition] = useState([0.5, 1.5, 4]);
-  
+
   // Handle window resize for responsive camera and layout
   useEffect(() => {
     const handleResize = () => {
@@ -39,19 +41,19 @@ function App() {
         setCameraPosition([0.5, 1.5, 4]); // Large screens
       }
     };
-    
+
     // Set initial position
     handleResize();
-    
+
     // Add event listener with better debounce to prevent excessive recalculations
     let resizeTimer;
     const debouncedResize = () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(handleResize, 150); // Slightly longer timeout for performance
     };
-    
+
     window.addEventListener('resize', debouncedResize);
-    
+
     // Clean up
     return () => {
       clearTimeout(resizeTimer);
@@ -62,10 +64,10 @@ function App() {
   // Fetch album data
   const fetchAlbumData = async (id) => {
     if (!id || id.trim() === '') return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await axios.get(`https://studio.codnix.com/creation/ealbum/${id}.json`);
       setAlbumData(response.data);
@@ -101,16 +103,47 @@ function App() {
         setShowInput(true);
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-  
+
+  // Toggle AR mode
+   const toggleARMode = () => {
+    // Stop the camera if exiting AR mode
+    if (arMode) {
+        // Stop all video tracks from the camera
+        const videoTracks = document.querySelector('video')?.srcObject?.getTracks();
+        if (videoTracks) {
+            videoTracks.forEach(track => track.stop());
+        }
+
+        // Remove video element to fully release the camera
+        document.querySelector('video')?.remove();
+    }
+
+    // Cleanup existing WebGL context
+    if (canvasContainerRef.current) {
+        const existingCanvas = canvasContainerRef.current.querySelector('canvas');
+        if (existingCanvas) {
+            existingCanvas.remove();
+        }
+    }
+
+    // Wait for cleanup before switching modes
+    requestAnimationFrame(() => {
+        setARMode(prev => !prev);
+    });
+
+    console.log(`AR mode switched: ${!arMode}`);
+};
+
+
   return (
-    <div className="relative min-h-screen w-full h-full overflow-hidden bg-zinc-800 text-white " 
-         ref={canvasContainerRef} 
-         >
-      
+    <div className="relative min-h-screen w-full h-full overflow-hidden bg-zinc-800 text-white "
+      ref={canvasContainerRef}
+    >
+
       {/* Album Code Input - responsive and improved UI */}
       {showInput && (
         <div className="fixed inset-0 z-50 bg-white/0 backdrop-blur-sm p-3 sm:p-4 md:p-6 flex justify-center items-center">
@@ -125,7 +158,7 @@ function App() {
                 className="flex-1 px-4 py-2 rounded-lg sm:rounded-r-none bg-slate-800 border border-slate-700 focus:border-blue-500 focus:outline-none transition-colors"
                 autoFocus
               />
-              <button 
+              <button
                 type="submit"
                 className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg sm:rounded-l-none font-medium transition-colors"
               >
@@ -135,7 +168,7 @@ function App() {
           </div>
         </div>
       )}
-      
+
       {/* Loading Overlay - improved responsive design */}
       {loading && (
         <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/90 z-40 p-4">
@@ -146,7 +179,7 @@ function App() {
           <div className="text-slate-400 mt-2 text-center text-sm sm:text-base max-w-xs sm:max-w-sm mx-auto">Please wait while we prepare your experience</div>
         </div>
       )}
-      
+
       {/* Error Display - improved responsive design */}
       {error && !loading && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/90 z-40 p-4">
@@ -155,13 +188,13 @@ function App() {
             <h2 className="text-lg sm:text-xl font-bold mb-2">Error Loading Album</h2>
             <p className="mb-4 text-sm sm:text-base">{error}</p>
             <div className="flex gap-2 justify-center">
-              <button 
+              <button
                 onClick={() => setShowInput(true)}
                 className="bg-slate-700 hover:bg-slate-800 px-3 py-1 sm:px-4 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base"
               >
                 Change Album
               </button>
-              <button 
+              <button
                 onClick={() => fetchAlbumData(albumId)}
                 className="bg-red-700 hover:bg-red-800 px-3 py-1 sm:px-4 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base"
               >
@@ -171,11 +204,21 @@ function App() {
           </div>
         </div>
       )}
-      
-      {/* 3D Canvas and UI */}
+
+      {/* AR Mode Toggle Button */}
       {!loading && !error && albumData && (
+        <button
+          onClick={toggleARMode}
+          className="fixed top-4 right-4 z-30 bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg font-medium transition-colors"
+        >
+          {arMode ? "Exit AR" : "View in AR"}
+        </button>
+      )}
+
+      {/* 3D Canvas and UI */}
+      {!loading && !error && albumData && !arMode && (
         <div className="relative inset-0 w-full h-full">
-          <Canvas 
+          <Canvas
             shadows
             camera={{
               position: cameraPosition,
@@ -184,16 +227,16 @@ function App() {
             style={{ width: '100%', height: '100%' }}
           >
             <Suspense fallback={null}>
-              <Experience projectData={albumData} autoPlay={true} />
+              <Experience projectData={albumData} autoPlay={false} />
             </Suspense>
           </Canvas>
           <UI albumId={albumId} />
-          
-          {/* Bottom status bar - more responsive text sizing and positioning */}
-          {/* <div className="fixed bottom-0 mt-2 left-0 right-0 z-20 p-1 sm:p-2 flex justify-between items-center text-xxs sm:text-xs text-slate-400 ">
-            <span className="truncate opacity-70 hover:opacity-100 transition-opacity">Powered by Codnix Studio © {new Date().getFullYear()}</span>
-          </div> */}
         </div>
+      )}
+
+      {/* AR View */}
+      {!loading && !error && albumData && arMode && (
+        <MindARComponent projectData={albumData} targetPath="./targets.mind" isARMode={true} />
       )}
     </div>
   );
