@@ -4,6 +4,18 @@ import { Experience } from "./Experience";
 import { Canvas } from "@react-three/fiber";
 
 const MindARComponent = ({ projectData, targetPath = "./target.mind" }) => {
+
+    useEffect(() => {
+        // Check if Three.js is already loaded globally
+        if (window.THREE) {
+            console.log("THREE.js already loaded globally, preventing duplicate loading");
+            // Use the existing instance instead of loading a new one
+            const existingThreeScripts = document.querySelectorAll('script[src*="three"]');
+            existingThreeScripts.forEach(script => {
+                script.setAttribute('data-already-loaded', 'true');
+            });
+        }
+    }, []);
     const containerRef = useRef(null);
     const canvasRef = useRef(null);
     const textureRef = useRef(null);
@@ -255,7 +267,7 @@ const MindARComponent = ({ projectData, targetPath = "./target.mind" }) => {
 
                 // Use a CDN with specified version known to work properly
                 const mindARScript = document.createElement("script");
-                mindARScript.src = "https://cdn.jsdelivr.net/npm/mind-ar@1.2.0/dist/mindar-image-three.prod.js";
+                mindARScript.src = "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js";
                 mindARScript.async = false;
                 mindARScript.crossOrigin = "anonymous";
                 mindARScript.type = "text/javascript";
@@ -465,25 +477,15 @@ const MindARComponent = ({ projectData, targetPath = "./target.mind" }) => {
 
                 // Configure renderer for better performance and stability
                 if (renderer) {
-                    // Lower quality settings for stability
+                    // Use LinearSRGBColorSpace instead of LinearEncoding
+                    renderer.outputColorSpace = window.THREE.LinearSRGBColorSpace; // Modern replacement for outputEncoding
                     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-                    renderer.outputEncoding = window.THREE.LinearEncoding; // Instead of sRGBEncoding
 
-                    // Optimize WebGL parameters
-                    const gl = renderer.getContext();
-                    if (gl) {
-                        // Hint to the browser that we prefer performance over quality
-                        gl.hint(gl.GENERATE_MIPMAP_HINT, gl.FASTEST);
-
-                        // Disable depth testing if not needed
-                        gl.disable(gl.DEPTH_TEST);
-
-                        // Disable unnecessary features
-                        renderer.shadowMap.enabled = false;
-                        renderer.physicallyCorrectLights = false;
+                    // Set proper encoding for textures
+                    if (textureRef.current) {
+                        textureRef.current.colorSpace = window.THREE.LinearSRGBColorSpace; // Modern replacement for encoding
                     }
                 }
-
                 // Improve WebGL context handling
                 const canvas = renderer.domElement;
 
@@ -663,13 +665,14 @@ const MindARComponent = ({ projectData, targetPath = "./target.mind" }) => {
                     textureRef.current = new window.THREE.CanvasTexture(r3fCanvas);
                     textureRef.current.minFilter = window.THREE.LinearFilter;
                     textureRef.current.magFilter = window.THREE.LinearFilter;
-                    textureRef.current.encoding = window.THREE.LinearEncoding; // Use linear encoding for better compatibility
+                    textureRef.current.encoding = window.THREE.LinearSRGBColorSpace; // Use linear encoding for better compatibility
                     textureRef.current.needsUpdate = true;
 
                     const material = new window.THREE.MeshBasicMaterial({
                         map: textureRef.current,
                         transparent: true,
                         side: window.THREE.DoubleSide
+                        // Don't try to override onBuild method, it's been removed
                     });
 
                     // Inside initializeAR function where the plane is created:
@@ -736,6 +739,7 @@ const MindARComponent = ({ projectData, targetPath = "./target.mind" }) => {
                             targetFoundIndicator.visible = false;
                         }, 2000);
                     };
+                    
                 } catch (textureError) {
                     console.error("Error setting up 3D texture:", textureError);
                     // Continue anyway - AR might work without the texture
@@ -756,94 +760,40 @@ const MindARComponent = ({ projectData, targetPath = "./target.mind" }) => {
                     if (!textureRef.current || !canvasRef.current) return;
 
                     if (rootInstance && canvasRef.current) {
-                        // This triggers a render in R3F
                         canvasRef.current.dispatchEvent(new Event('update'));
                     }
 
                     if (textureRef.current) {
                         textureRef.current.needsUpdate = true;
                     }
-                    // Throttle updates to reduce GPU load
-                    
+
                     frameCount++;
 
-                    // More aggressive throttling - update every 3rd frame on low-end devices
                     const frameSkip = memoryInfo && memoryInfo.jsHeapSizeLimit < 2000000000 ? 3 : 2;
-
-                    if (frameCount % frameSkip === 0 && timestamp - lastFrame > 20) { // more delay between frames
+                    if (frameCount % frameSkip === 0 && timestamp - lastFrame > 20) {
                         textureRef.current.needsUpdate = true;
                         lastFrame = timestamp;
                     }
 
-                    // Try-catch to prevent crashes from WebGL errors
                     try {
-                        // Check if scene and camera are valid before rendering
                         if (scene && camera) {
-                            // Crucial fix: Patch the scene and its objects recursively
-                            const patchObject = (obj) => {
-                                // Skip if obj is not an object or is null/undefined
-                                if (!obj || typeof obj !== 'object') return;
-
-                                // Add onBeforeRender method if it doesn't exist
-                                if (typeof obj.onBeforeRender !== 'function') {
-                                    obj.onBeforeRender = () => { };
-                                }
-
-                                // Also add onAfterRender - some objects might need this too
-                                if (typeof obj.onAfterRender !== 'function') {
-                                    obj.onAfterRender = () => { };
-                                }
-
-                                // Handle materials that might need these methods
-                                if (obj.material && typeof obj.material === 'object') {
-                                    if (typeof obj.material.onBeforeRender !== 'function') {
-                                        obj.material.onBeforeRender = () => { };
-                                    }
-                                    if (typeof obj.material.onAfterRender !== 'function') {
-                                        obj.material.onAfterRender = () => { };
-                                    }
-                                }
-
-
-                                renderer.render(scene, camera);
-
-                                // Process children
-                                if (obj.children && Array.isArray(obj.children)) {
-                                    obj.children.forEach(child => {
-                                        if (child && typeof child === 'object') {
-                                            patchObject(child);
-                                        }
-                                    });
-                                }
-                            };
-
-                            // Patch the entire scene
-                            patchObject(scene);
-
-                            // Also patch the camera specifically
-                            patchObject(camera);
-
-                            // DON'T patch renderer.info.render.frame - it's a number, not an object
-                            // Instead, check if renderer has proper methods
-                            if (typeof renderer.onBeforeRender !== 'function') {
-                                renderer.onBeforeRender = () => { };
-                            }
-
+                            // Render the scene
                             renderer.render(scene, camera);
                         }
                     } catch (renderError) {
                         console.error("Render error:", renderError);
-                        // If persistent rendering errors, try to recover
                         if (renderError.message.includes('WebGL') || renderError.message.includes('context')) {
                             setContextLost(true);
                             renderer.setAnimationLoop(null);
                             return;
                         }
                     }
+
+                    requestAnimationFrame(renderLoop); // Ensures smooth updates
                 };
 
-                // Start the render loop with error handling wrapper
-                renderer.setAnimationLoop(renderLoop);
+
+                renderer.setAnimationLoop(renderLoop);;
 
             } catch (error) {
                 console.error("❌ AR initialization error:", error);
