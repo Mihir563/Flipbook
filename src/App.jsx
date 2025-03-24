@@ -140,16 +140,23 @@ function App() {
 
 
   return (
-    <div className="relative min-h-screen w-full h-full overflow-hidden bg-zinc-800 text-white "
+    <div
+      className={`relative min-h-screen w-full h-full overflow-hidden ${
+        arMode ? "bg-transparent" : "bg-zinc-800"
+      }  text-white`}
       ref={canvasContainerRef}
     >
-
       {/* Album Code Input - responsive and improved UI */}
       {showInput && (
         <div className="fixed inset-0 z-50 bg-white/0 backdrop-blur-sm p-3 sm:p-4 md:p-6 flex justify-center items-center">
           <div className="w-full max-w-md bg-zinc-900/40 p-4 sm:p-6 rounded-xl shadow-lg">
-            <h2 className="text-lg sm:text-xl font-bold mb-3 text-center">Enter Album Code</h2>
-            <form onSubmit={handleSubmit} className="flex w-full flex-col sm:flex-row gap-2">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 text-center">
+              Enter Album Code
+            </h2>
+            <form
+              onSubmit={handleSubmit}
+              className="flex w-full flex-col sm:flex-row gap-2"
+            >
               <input
                 type="text"
                 value={inputAlbumId}
@@ -175,8 +182,12 @@ function App() {
           <div className="w-12 h-12 sm:w-16 sm:h-16 mb-4 relative">
             <div className="absolute inset-0 border-4 border-t-blue-500 border-blue-200/30 rounded-full animate-spin"></div>
           </div>
-          <div className="text-lg sm:text-xl font-medium text-center">Loading your album...</div>
-          <div className="text-slate-400 mt-2 text-center text-sm sm:text-base max-w-xs sm:max-w-sm mx-auto">Please wait while we prepare your experience</div>
+          <div className="text-lg sm:text-xl font-medium text-center">
+            Loading your album...
+          </div>
+          <div className="text-slate-400 mt-2 text-center text-sm sm:text-base max-w-xs sm:max-w-sm mx-auto">
+            Please wait while we prepare your experience
+          </div>
         </div>
       )}
 
@@ -184,8 +195,12 @@ function App() {
       {error && !loading && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/90 z-40 p-4">
           <div className="bg-red-900/50 border border-red-800 rounded-lg p-4 sm:p-6 max-w-xs sm:max-w-sm md:max-w-md text-center">
-            <div className="text-red-400 text-4xl sm:text-5xl mb-3 sm:mb-4">⚠️</div>
-            <h2 className="text-lg sm:text-xl font-bold mb-2">Error Loading Album</h2>
+            <div className="text-red-400 text-4xl sm:text-5xl mb-3 sm:mb-4">
+              ⚠️
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold mb-2">
+              Error Loading Album
+            </h2>
             <p className="mb-4 text-sm sm:text-base">{error}</p>
             <div className="flex gap-2 justify-center">
               <button
@@ -209,7 +224,7 @@ function App() {
       {!loading && !error && albumData && (
         <button
           onClick={toggleARMode}
-          className="fixed top-4 right-4 z-30 bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg font-medium transition-colors"
+          className="fixed bottom-4 right-4 z-30 bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg font-medium transition-colors"
         >
           {arMode ? "Exit AR" : "View in AR"}
         </button>
@@ -224,7 +239,7 @@ function App() {
               position: cameraPosition,
               fov: 45,
             }}
-            style={{ width: '100%', height: '100%' }}
+            style={{ width: "100%", height: "100%" }}
           >
             <Suspense fallback={null}>
               <Experience projectData={albumData} autoPlay={false} />
@@ -236,7 +251,16 @@ function App() {
 
       {/* AR View */}
       {!loading && !error && albumData && arMode && (
-        <MindARComponent projectData={albumData} targetPath="./targets.mind" isARMode={true} />
+        <div className="relative inset-0 w-full h-full">
+          <MindARComponent
+            projectData={albumData}
+            targetPath="./targets.mind"
+            isARMode={true}
+          />
+          {/* <Canvas>
+        <Experience projectData={albumData} autoPlay={false} />
+          </Canvas> */}
+        </div>
       )}
     </div>
   );

@@ -51,15 +51,15 @@ export const Experience = ({ projectData, autoPlay, isARMode = false }) => {
   const bookConfig = useMemo(() => {
     if (isARMode) {
       return {
-        position: [0, 0, -0.5], // Closer to camera in AR
-        scale: [0.15, 0.15, 0.15], // Smaller scale for AR
-        rotation: [-Math.PI / 2, 0, 0] // Flat orientation for AR target
+        position: [0, 0, 0], // Move to center (was -0.5)
+        scale: [0.2, 0.2, 0.2], // Slightly larger
+        rotation: [0, 0, 0], // Try without rotation initially
       };
     }
     return {
       position: [0, 0, 0],
       scale: [1, 1, 1],
-      rotation: [-Math.PI / 10, 0, 0]
+      rotation: [-Math.PI / 10, 0, 0],
     };
   }, [isARMode]);
 
