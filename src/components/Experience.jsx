@@ -5,12 +5,8 @@ export const Experience = ({ projectData }) => {
   return (
     <>
       <Book position={[0, 0, 0]} rotation={[-Math.PI / 10, 0, 0]} />
-      <OrbitControls
-        enableRotate={false}
-        enablePan={false}
-        enableZoom={false}
-      />
-      <Environment preset="city"></Environment>
+      <OrbitControls enableRotate={false} enablePan={false} enableZoom={true} />
+      <Environment preset="city" />
       <directionalLight
         position={[2, 6, 4]}
         intensity={0.5}

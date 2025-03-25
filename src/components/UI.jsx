@@ -2,7 +2,7 @@ import { atom, useAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import AudioPlayer from "./AudioPlayer";
-import { FullscreenButton } from './FullScreen';
+import { FullscreenButton } from "./FullScreen";
 import { AutoPlayControls } from "./AutoPlay";
 
 export const pageAtom = atom(0);
@@ -18,7 +18,11 @@ export const createPagesFromData = (data, splitImageMode = false) => {
   const imageUrls = [];
 
   // Extract all image URLs from the data
-  if (data && typeof data.ImagesServer === "object" && data.ImagesServer !== null) {
+  if (
+    data &&
+    typeof data.ImagesServer === "object" &&
+    data.ImagesServer !== null
+  ) {
     for (const key in data.ImagesServer) {
       if (Object.prototype.hasOwnProperty.call(data.ImagesServer, key)) {
         imageUrls.push(data.ImagesServer[key]);
@@ -119,7 +123,7 @@ export const UI = ({ albumId }) => {
   const [screenSize, setScreenSize] = useState({
     isMobile: false,
     isTablet: false,
-    isDesktop: false
+    isDesktop: false,
   });
 
   // Check window size for responsive layout with more breakpoints
@@ -129,7 +133,7 @@ export const UI = ({ albumId }) => {
       setScreenSize({
         isMobile: width < 640,
         isTablet: width >= 640 && width < 1024,
-        isDesktop: width >= 1024
+        isDesktop: width >= 1024,
       });
     };
 
@@ -165,7 +169,7 @@ export const UI = ({ albumId }) => {
           `https://studio.codnix.com/creation/ealbum/${albumId}.json`
         );
         setProjectData(response.data);
-        console.log(response.data)
+        console.log(response.data);
 
         // Determine split image mode based on SingleSided property
         const shouldUseSplitMode =
@@ -215,7 +219,9 @@ export const UI = ({ albumId }) => {
       <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-30">
         <div className="text-white flex flex-col items-center px-4 py-6 rounded-lg ">
           <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-t-blue-500 border-blue-200/30 rounded-full animate-spin mb-3"></div>
-          <span className="text-sm sm:text-base md:text-lg">Loading album...</span>
+          <span className="text-sm sm:text-base md:text-lg">
+            Loading album...
+          </span>
         </div>
       </div>
     );
@@ -241,33 +247,47 @@ export const UI = ({ albumId }) => {
   return (
     <>
       <main className="pointer-events-none select-none z-10 fixed inset-0 flex justify-between flex-col">
-        
         {/* Top header with title and audio player */}
-        
-        <div className={`w-full bg-gradient-to-b from-black/60 to-transparent 
-                        ${screenSize.isMobile ? 'px-2 py-2' : screenSize.isTablet ? 'px-4 py-3' : 'px-6 py-4'}`}>
-          <div className={`flex ${screenSize.isMobile ? 'flex-col gap-2' : 'justify-between items-center'}`}>
+        <div
+          className={`w-full bg-gradient-to-b from-black/60 to-transparent 
+                ${
+                  screenSize.isMobile
+                    ? "px-2 py-2"
+                    : screenSize.isTablet
+                    ? "px-4 py-3"
+                    : "px-6 py-4"
+                }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            {/* Title */}
             <h1
               className={`bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent 
-                font-bold rounded-lg max-w-full 
-                ${screenSize.isMobile ? 'text-lg text-center w-full py-1' : 
-                  screenSize.isTablet ? 'text-xl py-1 px-2' : 'text-2xl py-2 px-3'}`}
+        font-bold rounded-lg max-w-full 
+        ${
+          screenSize.isMobile
+            ? "text-lg text-center w-full py-1"
+            : screenSize.isTablet
+            ? "text-xl py-1 px-2"
+            : "text-2xl py-2 px-3"
+        }`}
             >
               {title}
             </h1>
 
-
-            <div className={`${screenSize.isMobile ? 'w-full flex justify-center' : ''}`}>
+            {/* Icons and Audio */}
+            <div className="flex items-center gap-2">
               {audioUrl && <AudioPlayer audioUrl={audioUrl} />}
+              <FullscreenButton />
+              <AutoPlayControls />
             </div>
-            <FullscreenButton />
-            <AutoPlayControls/>
           </div>
         </div>
 
         {/* Add page navigation controls */}
-        <div className={`w-full ${screenSize.isMobile ? 'py-3' : 'py-4'} 
-                        bg-gradient-to-t from-black/60 to-transparent`}>
+        <div
+          className={`w-full ${screenSize.isMobile ? "py-3" : "py-4"} 
+                        bg-gradient-to-t from-black/60 to-transparent`}
+        >
           <div className="flex justify-center gap-3 sm:gap-4 items-center -mb-3">
             <button
               className="pointer-events-auto text-white bg-black/50 hover:bg-black/70 
@@ -278,13 +298,13 @@ export const UI = ({ albumId }) => {
             >
               ← Prev
             </button>
-            
+
             <div className="pointer-events-auto flex items-center">
               <span className="text-white bg-black/30 px-3 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm border border-white/10">
                 {page + 1} / {pages.length}
               </span>
             </div>
-            
+
             <button
               className="pointer-events-auto text-white bg-black/50 hover:bg-black/70 
                         border border-white/20 px-3 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm 
