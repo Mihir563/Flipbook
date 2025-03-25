@@ -1,7 +1,7 @@
 import { Environment, OrbitControls } from "@react-three/drei";
 import { useThree, useFrame } from "@react-three/fiber";
 import { useRef, useEffect, useMemo } from "react";
-import { Book } from "./Book"; 
+import { Book } from "./Book";
 import * as THREE from "three";
 
 export const Experience = ({ projectData, autoPlay, isARMode = false }) => {
@@ -24,7 +24,7 @@ export const Experience = ({ projectData, autoPlay, isARMode = false }) => {
     console.log("Experience mounting with project data:", !!projectData);
 
     // Make sure THREE is available globally for MindAR to use
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       window.THREE = THREE;
     }
 
@@ -32,14 +32,14 @@ export const Experience = ({ projectData, autoPlay, isARMode = false }) => {
     const forceUpdate = () => {
       if (gl && gl.domElement) {
         gl.render(scene, camera);
-        gl.domElement.dispatchEvent(new Event('update'));
+        gl.domElement.dispatchEvent(new Event("update"));
       }
     };
 
     // Call initial force update and schedule several more
     forceUpdate();
-    const updateTimers = [100, 500, 1000, 2000].map(
-      delay => setTimeout(forceUpdate, delay)
+    const updateTimers = [100, 500, 1000, 2000].map((delay) =>
+      setTimeout(forceUpdate, delay)
     );
 
     return () => {
@@ -47,18 +47,19 @@ export const Experience = ({ projectData, autoPlay, isARMode = false }) => {
     };
   }, [gl, scene, camera, projectData]);
 
-  // Add AR-specific adjustments
+  // Add AR-specific adjustments with wider book configuration
   const bookConfig = useMemo(() => {
     if (isARMode) {
       return {
-        position: [0, 0, 0], // Move to center (was -0.5)
-        scale: [0.2, 0.2, 0.2], // Slightly larger
-        rotation: [0, 0, 0], // Try without rotation initially
+        position: [0, 0, 0], // Centered position
+        scale: [1.75, 1, 1], // Wider X scale for normal mode
+
+        rotation: [0, 0, 0], // No rotation in AR mode
       };
     }
     return {
       position: [0, 0, 0],
-      scale: [1, 1, 1],
+      scale: [1.75, 1, 1], // Wider X scale for normal mode
       rotation: [-Math.PI / 10, 0, 0],
     };
   }, [isARMode]);
@@ -82,8 +83,9 @@ export const Experience = ({ projectData, autoPlay, isARMode = false }) => {
         scale={bookConfig.scale}
         autoPlay={autoPlay}
         projectData={projectData}
+        openWidth={1.8} // Add prop to control how wide the book opens
       />
-      
+
       {!isARMode && (
         <>
           <OrbitControls

@@ -224,7 +224,9 @@ function App() {
       {!loading && !error && albumData && (
         <button
           onClick={toggleARMode}
-          className="fixed bottom-4 right-4 z-30 bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg font-medium transition-colors"
+          className="fixed bottom-4 right-4 z-30 text-white bg-black/50 hover:bg-black/70 
+                        border border-white/20 px-3 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm 
+                        transition-all duration-200 cursor-pointer"
         >
           {arMode ? "Exit AR" : "View in AR"}
         </button>
